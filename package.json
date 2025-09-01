@@ -90,5 +90,11 @@
   },
   "resolutions": {
     "strip-ansi": "6.0.1"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.0",
+    "puppeteer": "24.17.1",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
   }
 }

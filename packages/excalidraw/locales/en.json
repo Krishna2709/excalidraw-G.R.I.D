@@ -640,5 +640,14 @@
     },
     "itemNotAvailable": "Command is not available...",
     "shortcutHint": "For Command palette, use {{shortcut}}"
+  },
+  "workspace": {
+    "select": "Select Workspace",
+    "create": "Create Workspace",
+    "edit": "Edit Workspace",
+    "deleteConfirm": "Are you sure you want to delete this workspace? This action cannot be undone.",
+    "lastModified": "Last modified",
+    "noWorkspaces": "No workspaces found. Create your first workspace to get started.",
+    "namePlaceholder": "Enter workspace name"
   }
 }
