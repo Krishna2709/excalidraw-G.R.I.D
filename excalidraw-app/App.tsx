@@ -220,10 +220,8 @@ const initializeScene = async (opts: {
   );
   const externalUrlMatch = window.location.hash.match(/^#url=(.*)$/);
 
-  // Only load from localStorage if no workspace is selected
-  const localDataState = opts.currentWorkspaceId
-    ? null
-    : importFromLocalStorage();
+  // Don't automatically load workspace data on startup - let user choose from welcome dialog
+  const localDataState = importFromLocalStorage();
 
   let scene: RestoredDataState & {
     scrollToContent?: boolean;
@@ -350,7 +348,16 @@ const ExcalidrawWrapper = () => {
   // workspace state
   // ---------------------------------------------------------------------------
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(
-    null,
+    () => {
+      // Restore current workspace ID from localStorage on app start
+      try {
+        const savedWorkspaceId = localStorage.getItem("excalidraw-current-workspace-id");
+        return savedWorkspaceId || null;
+      } catch (error) {
+        console.error("Error loading current workspace ID:", error);
+        return null;
+      }
+    }
   );
 
   // initial state
@@ -414,6 +421,20 @@ const ExcalidrawWrapper = () => {
       WorkspaceManager.cleanup();
     };
   }, []);
+
+  // Handle workspace deletion cleanup
+  const handleWorkspaceDeletion = useCallback((deletedWorkspaceId: string) => {
+    if (currentWorkspaceId === deletedWorkspaceId) {
+      // If the current workspace was deleted, clear it
+      setCurrentWorkspaceId(null);
+      WorkspaceManager.setCurrentWorkspaceId(null);
+      try {
+        localStorage.removeItem("excalidraw-current-workspace-id");
+      } catch (error) {
+        console.error("Error clearing deleted workspace ID:", error);
+      }
+    }
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     if (!excalidrawAPI || (!isCollabDisabled && !collabAPI)) {
@@ -709,6 +730,17 @@ const ExcalidrawWrapper = () => {
   const handleWorkspaceChange = async (workspaceId: string | null) => {
     setCurrentWorkspaceId(workspaceId);
     WorkspaceManager.setCurrentWorkspaceId(workspaceId);
+    
+    // Save current workspace ID to localStorage for persistence
+    try {
+      if (workspaceId) {
+        localStorage.setItem("excalidraw-current-workspace-id", workspaceId);
+      } else {
+        localStorage.removeItem("excalidraw-current-workspace-id");
+      }
+    } catch (error) {
+      console.error("Error saving current workspace ID:", error);
+    }
 
     if (workspaceId && excalidrawAPI) {
       const workspace = await WorkspaceManager.loadWorkspace(workspaceId);
@@ -908,6 +940,12 @@ const ExcalidrawWrapper = () => {
             // Start with a clean canvas for quick drawing
             setCurrentWorkspaceId(null);
             WorkspaceManager.setCurrentWorkspaceId(null);
+            // Clear the current workspace ID from localStorage
+            try {
+              localStorage.removeItem("excalidraw-current-workspace-id");
+            } catch (error) {
+              console.error("Error clearing current workspace ID:", error);
+            }
             if (excalidrawAPI) {
               excalidrawAPI.updateScene({
                 elements: [],
@@ -920,6 +958,12 @@ const ExcalidrawWrapper = () => {
             // Save current drawing to the selected workspace
             setCurrentWorkspaceId(workspaceId);
             WorkspaceManager.setCurrentWorkspaceId(workspaceId);
+            // Save the workspace ID to localStorage
+            try {
+              localStorage.setItem("excalidraw-current-workspace-id", workspaceId);
+            } catch (error) {
+              console.error("Error saving workspace ID:", error);
+            }
             // The onChange handler will automatically save to the workspace
           }}
           hasUnsavedChanges={excalidrawAPI ? excalidrawAPI.getSceneElements().length > 0 : false}
@@ -933,6 +977,7 @@ const ExcalidrawWrapper = () => {
               });
             }
           }}
+          onWorkspaceDeletion={handleWorkspaceDeletion}
         />
               {!isMobile && collabAPI && !isCollabDisabled && (
                 <>

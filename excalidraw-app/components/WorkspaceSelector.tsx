@@ -28,6 +28,7 @@ interface WorkspaceSelectorProps {
   onSaveToWorkspace?: (workspaceId: string) => void;
   hasUnsavedChanges?: boolean;
   onNewDrawing?: () => void;
+  onWorkspaceDeletion?: (workspaceId: string) => void;
 }
 
 export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
@@ -37,6 +38,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
   onSaveToWorkspace,
   hasUnsavedChanges = false,
   onNewDrawing,
+  onWorkspaceDeletion,
 }) => {
   const [workspaces, setWorkspaces] = useState<WorkspaceMetadata[]>([]);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
@@ -59,11 +61,9 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
 
   useEffect(() => {
     loadWorkspaces();
-    // Show welcome dialog if no workspace is selected
-    if (!currentWorkspaceId) {
-      setShowWelcomeDialog(true);
-    }
-  }, [loadWorkspaces, currentWorkspaceId]);
+    // Always show welcome dialog on app start
+    setShowWelcomeDialog(true);
+  }, [loadWorkspaces]);
 
   const handleCreateWorkspace = async () => {
     if (newWorkspaceName.trim()) {
@@ -92,6 +92,10 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
       if (currentWorkspaceId === workspaceId) {
         onWorkspaceChange(null);
         setShowWelcomeDialog(true);
+      }
+      // Notify parent component about workspace deletion
+      if (onWorkspaceDeletion) {
+        onWorkspaceDeletion(workspaceId);
       }
     }
   };
@@ -364,8 +368,12 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
         >
           <div className="workspace-welcome-dialog__content">
             <div className="workspace-welcome-dialog__header">
-              <h2>Choose how you'd like to start</h2>
-              <p>Select an option to begin your drawing session</p>
+              <h2>Welcome to Excalidraw</h2>
+              <p>
+                {currentWorkspaceId && currentWorkspace
+                  ? `You have a current workspace: "${currentWorkspace.name}"`
+                  : "Choose how you'd like to start your drawing session"}
+              </p>
             </div>
 
             <div className="workspace-welcome-dialog__options">
@@ -395,22 +403,40 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 </div>
               </button>
 
-              {workspaces.length > 0 && (
+              {currentWorkspaceId && currentWorkspace && (
                 <button
                   type="button"
-                  onClick={handleOpenExistingWorkspace}
-                  className="workspace-welcome-dialog__option workspace-welcome-dialog__option--existing"
+                  onClick={() => handleSelectWorkspace(currentWorkspaceId)}
+                  className="workspace-welcome-dialog__option workspace-welcome-dialog__option--current"
                 >
                   {LibraryIcon}
                   <div className="workspace-welcome-dialog__option-content">
-                    <h3>Open Existing Workspace</h3>
+                    <h3>Continue Current Workspace</h3>
                     <p>
-                      Continue working on a previous project ({workspaces.length}{" "}
-                      available).
+                      Continue working on "{currentWorkspace.name}" (last modified: {formatDate(currentWorkspace.updatedAt)})
                     </p>
                   </div>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleOpenExistingWorkspace}
+                className={`workspace-welcome-dialog__option workspace-welcome-dialog__option--existing ${
+                  workspaces.length === 0 ? "workspace-welcome-dialog__option--disabled" : ""
+                }`}
+                disabled={workspaces.length === 0}
+              >
+                {LibraryIcon}
+                <div className="workspace-welcome-dialog__option-content">
+                  <h3>Open Other Workspace</h3>
+                  <p>
+                    {workspaces.length > 0
+                      ? `Open a different workspace (${workspaces.length} available).`
+                      : "No other workspaces found. Create one first."}
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
         </Dialog>
@@ -560,17 +586,32 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleNewDrawingInNewWorkspace}
-                    className="workspace-new-drawing-dialog__option"
-                  >
-                    {PlusIcon}
-                    <div className="workspace-new-drawing-dialog__option-content">
-                      <h5>New Drawing in New Workspace</h5>
-                      <p>Create a new workspace and start fresh</p>
+                  <div className="workspace-new-drawing-dialog__create-section">
+                    <div className="workspace-new-drawing-dialog__create-input">
+                      <TextField
+                        value={newWorkspaceName}
+                        onChange={(value) => setNewWorkspaceName(value)}
+                        placeholder="Enter new workspace name"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleNewDrawingInNewWorkspace();
+                          }
+                        }}
+                      />
                     </div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleNewDrawingInNewWorkspace}
+                      disabled={!newWorkspaceName.trim()}
+                      className="workspace-new-drawing-dialog__option workspace-new-drawing-dialog__option--create"
+                    >
+                      {PlusIcon}
+                      <div className="workspace-new-drawing-dialog__option-content">
+                        <h5>New Drawing in New Workspace</h5>
+                        <p>Create a new workspace and start fresh</p>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -584,7 +625,10 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
             <div className="workspace-new-drawing-dialog__actions">
               <button
                 type="button"
-                onClick={() => setShowNewDrawingDialog(false)}
+                onClick={() => {
+                  setShowNewDrawingDialog(false);
+                  setNewWorkspaceName("");
+                }}
                 className="workspace-new-drawing-dialog__cancel-button"
               >
                 Cancel

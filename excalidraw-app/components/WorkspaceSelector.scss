@@ -275,6 +275,62 @@
         border-color: var(--color-info);
       }
     }
+
+    &--current {
+      border-color: var(--color-primary);
+      background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+      color: white;
+      
+      &:hover {
+        border-color: var(--color-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      svg {
+        color: white;
+      }
+
+      .workspace-welcome-dialog__option-content {
+        h3, p {
+          color: white;
+        }
+      }
+    }
+
+    &--disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      border-color: var(--color-border-outline-variant) !important;
+      
+      &:hover {
+        transform: none;
+        box-shadow: none;
+        background: var(--color-surface-primary);
+        border-color: var(--color-border-outline-variant) !important;
+      }
+    }
+
+    &--create {
+      border-color: var(--color-success-light);
+      
+      &:hover:not(:disabled) {
+        border-color: var(--color-success);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        border-color: var(--color-border-outline-variant) !important;
+        
+        &:hover {
+          transform: none;
+          box-shadow: none;
+          background: var(--color-surface-primary);
+          border-color: var(--color-border-outline-variant) !important;
+        }
+      }
+    }
   }
 
   &__option-content {
@@ -509,6 +565,16 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  &__create-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__create-input {
+    margin-bottom: 0.5rem;
   }
 
   &__option {

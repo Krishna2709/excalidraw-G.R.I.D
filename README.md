@@ -12,9 +12,10 @@ A fork of Excalidraw with enhanced workspace management features for organizing 
 
 ### 🎨 **Smart Drawing Workflow**
 - **Welcome Dialog**: Choose how to start - quick drawing, new workspace, or open existing
-- **New Drawing Button**: Create fresh drawings within any workspace
+- **New Drawing Button**: Create fresh drawings within any workspace or create new workspaces
 - **Auto-save**: All changes are automatically saved to your current workspace
 - **Unsaved Changes Indicator**: See when you have work that needs saving
+- **Persistent Sessions**: Your current workspace is remembered across app restarts
 
 ### 🔄 **Move & Organize**
 - **Move Current Drawing**: Transfer your work to another workspace
@@ -33,7 +34,7 @@ A fork of Excalidraw with enhanced workspace management features for organizing 
    yarn start
    ```
 
-3. **Open your browser** to `http://localhost:3001`
+3. **Open your browser** to `http://localhost:3000`
 
 ## 📁 How to Use Workspaces
 
