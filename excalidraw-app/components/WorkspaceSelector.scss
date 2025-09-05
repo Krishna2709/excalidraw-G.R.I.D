@@ -1,0 +1,1064 @@
+.workspace-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 1rem;
+
+  &__button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    color: var(--color-on-surface);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  &__dropdown-container {
+    position: relative;
+  }
+
+  &__dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    min-width: 280px;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    margin-top: 0.25rem;
+    overflow: hidden;
+  }
+
+  &__dropdown-header {
+    padding: 0.75rem 1rem;
+    background: var(--color-surface-secondary);
+    border-bottom: 1px solid var(--color-border-outline-variant);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-on-surface);
+  }
+
+  &__dropdown-section {
+    padding: 0.75rem 0;
+
+    h4 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-on-surface-variant);
+      margin: 0 0 0.5rem 0;
+      padding: 0 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  &__dropdown-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--color-on-surface);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    text-align: left;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+    }
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+      color: var(--color-primary);
+    }
+
+    &--move {
+      svg {
+        color: var(--color-success);
+      }
+    }
+  }
+
+  &__dropdown-empty {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-on-surface-variant);
+    font-style: italic;
+  }
+
+  &__dropdown-actions {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--color-border-outline-variant);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__dropdown-cancel {
+    padding: 0.25rem 0.75rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.25rem;
+    color: var(--color-on-surface);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+  }
+
+  &__new-drawing-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  &__unsaved-indicator {
+    color: var(--color-warning);
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
+}
+
+// Save Prompt Styles
+.workspace-save-prompt {
+  display: flex;
+  align-items: center;
+  margin-right: 1rem;
+
+  &__button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// Welcome Dialog Styles
+.workspace-welcome-dialog {
+  .Dialog__content {
+    max-width: 600px;
+    width: 90vw;
+  }
+
+  &__content {
+    padding: 2rem;
+  }
+
+  &__header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.5rem 0;
+    }
+
+    p {
+      font-size: 1rem;
+      color: var(--color-on-surface-variant);
+      margin: 0;
+    }
+  }
+
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--color-surface-primary);
+    border: 2px solid var(--color-border-outline-variant);
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    svg {
+      width: 2rem;
+      height: 2rem;
+      color: var(--color-primary);
+      flex-shrink: 0;
+    }
+
+    &--quick {
+      border-color: var(--color-primary-light);
+      
+      &:hover {
+        border-color: var(--color-primary);
+      }
+    }
+
+    &--new {
+      border-color: var(--color-success-light);
+      
+      &:hover {
+        border-color: var(--color-success);
+      }
+    }
+
+    &--existing {
+      border-color: var(--color-info-light);
+      
+      &:hover {
+        border-color: var(--color-info);
+      }
+    }
+
+    &--current {
+      border-color: var(--color-primary);
+      background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+      color: white;
+      
+      &:hover {
+        border-color: var(--color-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      svg {
+        color: white;
+      }
+
+      .workspace-welcome-dialog__option-content {
+        h3, p {
+          color: white;
+        }
+      }
+    }
+
+    &--disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      border-color: var(--color-border-outline-variant) !important;
+      
+      &:hover {
+        transform: none;
+        box-shadow: none;
+        background: var(--color-surface-primary);
+        border-color: var(--color-border-outline-variant) !important;
+      }
+    }
+
+    &--create {
+      border-color: var(--color-success-light);
+      
+      &:hover:not(:disabled) {
+        border-color: var(--color-success);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        border-color: var(--color-border-outline-variant) !important;
+        
+        &:hover {
+          transform: none;
+          box-shadow: none;
+          background: var(--color-surface-primary);
+          border-color: var(--color-border-outline-variant) !important;
+        }
+      }
+    }
+  }
+
+  &__option-content {
+    flex: 1;
+
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.25rem 0;
+    }
+
+    p {
+      font-size: 0.875rem;
+      color: var(--color-on-surface-variant);
+      margin: 0;
+      line-height: 1.4;
+    }
+  }
+}
+
+// Move Dialog Styles
+.workspace-move-dialog {
+  .Dialog__content {
+    max-width: 500px;
+    width: 90vw;
+  }
+
+  &__content {
+    padding: 1.5rem;
+  }
+
+  &__header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.5rem 0;
+    }
+
+    p {
+      font-size: 1rem;
+      color: var(--color-on-surface-variant);
+      margin: 0;
+    }
+  }
+
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  &__section {
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.75rem 0;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--color-border-outline-variant);
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      color: var(--color-primary);
+      flex-shrink: 0;
+    }
+  }
+
+  &__option-content {
+    flex: 1;
+
+    h5 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.25rem 0;
+    }
+
+    p {
+      font-size: 0.75rem;
+      color: var(--color-on-surface-variant);
+      margin: 0;
+    }
+  }
+
+  &__create {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+
+  &__create-button {
+    padding: 0.5rem 1rem;
+    background: var(--color-success);
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: var(--color-success-dark);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__warning {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: 0.5rem;
+
+    p {
+      font-size: 0.875rem;
+      color: var(--color-warning-dark);
+      margin: 0;
+      text-align: center;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border-outline-variant);
+  }
+
+  &__cancel-button {
+    padding: 0.5rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    color: var(--color-on-surface);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+  }
+}
+
+// New Drawing Dialog Styles
+.workspace-new-drawing-dialog {
+  .Dialog__content {
+    max-width: 600px;
+    width: 90vw;
+  }
+
+  &__content {
+    padding: 2rem;
+  }
+
+  &__header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.5rem 0;
+    }
+
+    p {
+      font-size: 1rem;
+      color: var(--color-on-surface-variant);
+      margin: 0;
+    }
+  }
+
+  &__options {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  &__section {
+    h4 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 1rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border-outline-variant);
+    }
+  }
+
+  &__option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__create-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__create-input {
+    margin-bottom: 0.5rem;
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    svg {
+      width: 1.5rem;
+      height: 1.5rem;
+      color: var(--color-primary);
+      flex-shrink: 0;
+    }
+  }
+
+  &__option-content {
+    flex: 1;
+
+    h5 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 0.25rem 0;
+    }
+
+    p {
+      font-size: 0.875rem;
+      color: var(--color-on-surface-variant);
+      margin: 0;
+      line-height: 1.4;
+    }
+  }
+
+  &__warning {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: 0.5rem;
+
+    p {
+      font-size: 0.875rem;
+      color: var(--color-warning-dark);
+      margin: 0;
+      text-align: center;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border-outline-variant);
+  }
+
+  &__cancel-button {
+    padding: 0.5rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    color: var(--color-on-surface);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+  }
+}
+
+// Workspace List Dialog Styles
+.workspace-list-dialog {
+  .Dialog__content {
+    max-width: 500px;
+    width: 90vw;
+  }
+
+  &__content {
+    padding: 1.5rem;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+  }
+
+  &__create-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: var(--color-primary-dark);
+    }
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  &__list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 1.5rem;
+  }
+
+  &__empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-on-surface-variant);
+    font-style: italic;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border-outline-variant);
+  }
+
+  &__cancel-button {
+    padding: 0.5rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    color: var(--color-on-surface);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+  }
+}
+
+// Workspace Item Styles
+.workspace-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: var(--color-surface-primary);
+  border: 1px solid var(--color-border-outline-variant);
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--color-surface-secondary);
+    border-color: var(--color-border-outline);
+  }
+
+  &--active {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+  }
+
+  &__content {
+    flex: 1;
+    cursor: pointer;
+  }
+
+  &__name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-on-surface);
+    margin-bottom: 0.25rem;
+  }
+
+  &__date {
+    font-size: 0.75rem;
+    color: var(--color-on-surface-variant);
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover &__actions {
+    opacity: 1;
+  }
+}
+
+// Create/Edit Dialog Styles
+.workspace-create-dialog,
+.workspace-edit-dialog {
+  .Dialog__content {
+    max-width: 400px;
+    width: 90vw;
+  }
+
+  &__content {
+    padding: 1.5rem;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+
+    button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--color-border-outline-variant);
+      border-radius: 0.5rem;
+      background: var(--color-surface-primary);
+      color: var(--color-on-surface);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover:not(:disabled) {
+        background: var(--color-surface-secondary);
+        border-color: var(--color-border-outline);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &:last-child {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+
+        &:hover:not(:disabled) {
+          background: var(--color-primary-dark);
+        }
+      }
+    }
+  }
+}
+
+// Save Dialog Styles
+.workspace-save-dialog {
+  .Dialog__content {
+    max-width: 500px;
+    width: 90vw;
+  }
+
+  &__content {
+    padding: 1.5rem;
+  }
+
+  &__section {
+    margin-bottom: 2rem;
+
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--color-on-surface);
+      margin: 0 0 1rem 0;
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  &__empty {
+    text-align: center;
+    padding: 1rem;
+    color: var(--color-on-surface-variant);
+    font-style: italic;
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      color: var(--color-primary);
+    }
+
+    span {
+      font-size: 0.875rem;
+      color: var(--color-on-surface);
+    }
+  }
+
+  &__create {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+
+  &__create-button {
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    border: none;
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: var(--color-primary-dark);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border-outline-variant);
+  }
+
+  &__cancel-button {
+    padding: 0.5rem 1rem;
+    background: var(--color-surface-primary);
+    border: 1px solid var(--color-border-outline-variant);
+    border-radius: 0.5rem;
+    color: var(--color-on-surface);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--color-surface-secondary);
+      border-color: var(--color-border-outline);
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .workspace-selector {
+    margin-right: 0.5rem;
+    gap: 0.25rem;
+
+    &__button,
+    &__new-drawing-button {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8rem;
+
+      svg {
+        width: 0.875rem;
+        height: 0.875rem;
+      }
+    }
+
+    &__dropdown {
+      min-width: 250px;
+      right: auto;
+    }
+  }
+
+  .workspace-welcome-dialog {
+    &__content {
+      padding: 1.5rem;
+    }
+
+    &__option {
+      padding: 1rem;
+      gap: 0.75rem;
+
+      svg {
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+    }
+
+    &__option-content {
+      h3 {
+        font-size: 1rem;
+      }
+
+      p {
+        font-size: 0.8rem;
+      }
+    }
+  }
+
+  .workspace-move-dialog {
+    &__content {
+      padding: 1.5rem;
+    }
+
+    &__create {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  .workspace-new-drawing-dialog {
+    &__content {
+      padding: 1.5rem;
+    }
+
+    &__option {
+      padding: 0.75rem;
+      gap: 0.75rem;
+
+      svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+    }
+
+    &__option-content {
+      h5 {
+        font-size: 0.9rem;
+      }
+
+      p {
+        font-size: 0.8rem;
+      }
+    }
+  }
+
+  .workspace-save-prompt {
+    margin-right: 0.5rem;
+
+    &__button {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  .workspace-save-dialog {
+    &__create {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+}

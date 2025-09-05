@@ -133,6 +133,8 @@ import DebugCanvas, {
 } from "./components/DebugCanvas";
 import { AIComponents } from "./components/AI";
 import { ExcalidrawPlusIframeExport } from "./ExcalidrawPlusIframeExport";
+import { WorkspaceSelector } from "./components/WorkspaceSelector";
+import { WorkspaceManager } from "./data/WorkspaceManager";
 
 import "./index.scss";
 
@@ -204,6 +206,7 @@ const shareableLinkConfirmDialog = {
 const initializeScene = async (opts: {
   collabAPI: CollabAPI | null;
   excalidrawAPI: ExcalidrawImperativeAPI;
+  currentWorkspaceId?: string | null;
 }): Promise<
   { scene: ExcalidrawInitialDataState | null } & (
     | { isExternalScene: true; id: string; key: string }
@@ -217,6 +220,7 @@ const initializeScene = async (opts: {
   );
   const externalUrlMatch = window.location.hash.match(/^#url=(.*)$/);
 
+  // Don't automatically load workspace data on startup - let user choose from welcome dialog
   const localDataState = importFromLocalStorage();
 
   let scene: RestoredDataState & {
@@ -341,6 +345,21 @@ const ExcalidrawWrapper = () => {
 
   const [langCode, setLangCode] = useAppLangCode();
 
+  // workspace state
+  // ---------------------------------------------------------------------------
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(
+    () => {
+      // Restore current workspace ID from localStorage on app start
+      try {
+        const savedWorkspaceId = localStorage.getItem("excalidraw-current-workspace-id");
+        return savedWorkspaceId || null;
+      } catch (error) {
+        console.error("Error loading current workspace ID:", error);
+        return null;
+      }
+    }
+  );
+
   // initial state
   // ---------------------------------------------------------------------------
 
@@ -395,6 +414,27 @@ const ExcalidrawWrapper = () => {
       forceRefresh((prev) => !prev);
     }
   }, [excalidrawAPI]);
+
+  // Cleanup workspace manager on unmount
+  useEffect(() => {
+    return () => {
+      WorkspaceManager.cleanup();
+    };
+  }, []);
+
+  // Handle workspace deletion cleanup
+  const handleWorkspaceDeletion = useCallback((deletedWorkspaceId: string) => {
+    if (currentWorkspaceId === deletedWorkspaceId) {
+      // If the current workspace was deleted, clear it
+      setCurrentWorkspaceId(null);
+      WorkspaceManager.setCurrentWorkspaceId(null);
+      try {
+        localStorage.removeItem("excalidraw-current-workspace-id");
+      } catch (error) {
+        console.error("Error clearing deleted workspace ID:", error);
+      }
+    }
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     if (!excalidrawAPI || (!isCollabDisabled && !collabAPI)) {
@@ -468,10 +508,12 @@ const ExcalidrawWrapper = () => {
       }
     };
 
-    initializeScene({ collabAPI, excalidrawAPI }).then(async (data) => {
-      loadImages(data, /* isInitialLoad */ true);
-      initialStatePromiseRef.current.promise.resolve(data.scene);
-    });
+    initializeScene({ collabAPI, excalidrawAPI, currentWorkspaceId }).then(
+      async (data) => {
+        loadImages(data, /* isInitialLoad */ true);
+        initialStatePromiseRef.current.promise.resolve(data.scene);
+      },
+    );
 
     const onHashChange = async (event: HashChangeEvent) => {
       event.preventDefault();
@@ -485,16 +527,18 @@ const ExcalidrawWrapper = () => {
         }
         excalidrawAPI.updateScene({ appState: { isLoading: true } });
 
-        initializeScene({ collabAPI, excalidrawAPI }).then((data) => {
-          loadImages(data);
-          if (data.scene) {
-            excalidrawAPI.updateScene({
-              ...data.scene,
-              ...restore(data.scene, null, null, { repairBindings: true }),
-              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-            });
-          }
-        });
+        initializeScene({ collabAPI, excalidrawAPI, currentWorkspaceId }).then(
+          (data) => {
+            loadImages(data);
+            if (data.scene) {
+              excalidrawAPI.updateScene({
+                ...data.scene,
+                ...restore(data.scene, null, null, { repairBindings: true }),
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+            }
+          },
+        );
       }
     };
 
@@ -589,7 +633,13 @@ const ExcalidrawWrapper = () => {
         false,
       );
     };
-  }, [isCollabDisabled, collabAPI, excalidrawAPI, setLangCode]);
+  }, [
+    isCollabDisabled,
+    collabAPI,
+    excalidrawAPI,
+    setLangCode,
+    currentWorkspaceId,
+  ]);
 
   useEffect(() => {
     const unloadHandler = (event: BeforeUnloadEvent) => {
@@ -657,6 +707,11 @@ const ExcalidrawWrapper = () => {
       });
     }
 
+    // Save to current workspace if one is selected
+    if (currentWorkspaceId && !collabAPI?.isCollaborating()) {
+      WorkspaceManager.saveCurrentWorkspace(elements, appState, files);
+    }
+
     // Render the debug scene if the debug canvas is available
     if (debugCanvasRef.current && excalidrawAPI) {
       debugRenderer(
@@ -671,6 +726,40 @@ const ExcalidrawWrapper = () => {
   const [latestShareableLink, setLatestShareableLink] = useState<string | null>(
     null,
   );
+
+  const handleWorkspaceChange = async (workspaceId: string | null) => {
+    setCurrentWorkspaceId(workspaceId);
+    WorkspaceManager.setCurrentWorkspaceId(workspaceId);
+    
+    // Save current workspace ID to localStorage for persistence
+    try {
+      if (workspaceId) {
+        localStorage.setItem("excalidraw-current-workspace-id", workspaceId);
+      } else {
+        localStorage.removeItem("excalidraw-current-workspace-id");
+      }
+    } catch (error) {
+      console.error("Error saving current workspace ID:", error);
+    }
+
+    if (workspaceId && excalidrawAPI) {
+      const workspace = await WorkspaceManager.loadWorkspace(workspaceId);
+      if (workspace) {
+        excalidrawAPI.updateScene({
+          elements: workspace.elements,
+          appState: workspace.appState as AppState,
+          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+        });
+      }
+    } else if (!workspaceId && excalidrawAPI) {
+      // Clear the scene when no workspace is selected
+      excalidrawAPI.updateScene({
+        elements: [],
+        appState: {} as AppState,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    }
+  };
 
   const onExportToBackend = async (
     exportedElements: readonly NonDeletedExcalidrawElement[],
@@ -842,18 +931,67 @@ const ExcalidrawWrapper = () => {
         autoFocus={true}
         theme={editorTheme}
         renderTopRightUI={(isMobile) => {
-          if (isMobile || !collabAPI || isCollabDisabled) {
-            return null;
-          }
           return (
             <div className="top-right-ui">
-              {collabError.message && <CollabError collabError={collabError} />}
-              <LiveCollaborationTrigger
-                isCollaborating={isCollaborating}
-                onSelect={() =>
-                  setShareDialogState({ isOpen: true, type: "share" })
-                }
-              />
+                      <WorkspaceSelector
+          onWorkspaceChange={handleWorkspaceChange}
+          currentWorkspaceId={currentWorkspaceId}
+          onQuickDrawingStart={() => {
+            // Start with a clean canvas for quick drawing
+            setCurrentWorkspaceId(null);
+            WorkspaceManager.setCurrentWorkspaceId(null);
+            // Clear the current workspace ID from localStorage
+            try {
+              localStorage.removeItem("excalidraw-current-workspace-id");
+            } catch (error) {
+              console.error("Error clearing current workspace ID:", error);
+            }
+            if (excalidrawAPI) {
+              excalidrawAPI.updateScene({
+                elements: [],
+                appState: {} as AppState,
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+            }
+          }}
+          onSaveToWorkspace={(workspaceId) => {
+            // Save current drawing to the selected workspace
+            setCurrentWorkspaceId(workspaceId);
+            WorkspaceManager.setCurrentWorkspaceId(workspaceId);
+            // Save the workspace ID to localStorage
+            try {
+              localStorage.setItem("excalidraw-current-workspace-id", workspaceId);
+            } catch (error) {
+              console.error("Error saving workspace ID:", error);
+            }
+            // The onChange handler will automatically save to the workspace
+          }}
+          hasUnsavedChanges={excalidrawAPI ? excalidrawAPI.getSceneElements().length > 0 : false}
+          onNewDrawing={() => {
+            // Clear the canvas for a new drawing
+            if (excalidrawAPI) {
+              excalidrawAPI.updateScene({
+                elements: [],
+                appState: {} as AppState,
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+            }
+          }}
+          onWorkspaceDeletion={handleWorkspaceDeletion}
+        />
+              {!isMobile && collabAPI && !isCollabDisabled && (
+                <>
+                  {collabError.message && (
+                    <CollabError collabError={collabError} />
+                  )}
+                  <LiveCollaborationTrigger
+                    isCollaborating={isCollaborating}
+                    onSelect={() =>
+                      setShareDialogState({ isOpen: true, type: "share" })
+                    }
+                  />
+                </>
+              )}
             </div>
           );
         }}
