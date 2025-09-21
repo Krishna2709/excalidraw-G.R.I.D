@@ -134,7 +134,7 @@ import DebugCanvas, {
 import { AIComponents } from "./components/AI";
 import { ExcalidrawPlusIframeExport } from "./ExcalidrawPlusIframeExport";
 import { WorkspaceSelector } from "./components/WorkspaceSelector";
-import { WorkspaceManager } from "./data/WorkspaceManager";
+import { ProjectWorkspaceManager as WorkspaceManager } from "./data/ProjectWorkspaceManager";
 
 import "./index.scss";
 
@@ -399,6 +399,45 @@ const ExcalidrawWrapper = () => {
   });
 
   const [, forceRefresh] = useState(false);
+
+  // Heuristic: auto-resize rectangle containers to fit text (for manual file edits)
+  const autoResizeContainers = useCallback((elements: any[]) => {
+    try {
+      const idToEl = new Map(elements.map((e) => [e.id, e]));
+      const updated = elements.map((e) => ({ ...e }));
+      for (const text of updated.filter((e) => e.type === 'text')) {
+        let container: any | null = null;
+        if ((text as any).containerId) {
+          container = updated.find((e) => e.id === (text as any).containerId);
+        }
+        if (!container) {
+          const cx = (text as any).x + (text as any).width / 2;
+          const cy = (text as any).y + (text as any).height / 2;
+          container = updated.find(
+            (e) =>
+              e.type === 'rectangle' &&
+              cx >= (e as any).x &&
+              cx <= (e as any).x + (e as any).width &&
+              cy >= (e as any).y &&
+              cy <= (e as any).y + (e as any).height,
+          ) as any;
+        }
+        if (container && container.type === 'rectangle') {
+          const paddingX = 24;
+          const paddingY = 16;
+          const newWidth = Math.max(16, (text as any).width + paddingX * 2);
+          const newHeight = Math.max(16, (text as any).height + paddingY * 2);
+          (container as any).x = (text as any).x - paddingX;
+          (container as any).y = (text as any).y - paddingY;
+          (container as any).width = newWidth;
+          (container as any).height = newHeight;
+        }
+      }
+      return updated;
+    } catch {
+      return elements;
+    }
+  }, []);
 
   useEffect(() => {
     if (isDevEnv()) {
@@ -723,6 +762,80 @@ const ExcalidrawWrapper = () => {
     }
   };
 
+  // Auto-save callback
+  const autoSaveCallback = useCallback(() => {
+    if (currentWorkspaceId && excalidrawAPI && !collabAPI?.isCollaborating()) {
+      const elements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const files = excalidrawAPI.getFiles();
+      
+      if (WorkspaceManager.hasUnsavedChanges(elements, appState, files)) {
+        WorkspaceManager.saveCurrentWorkspace(elements, appState, files);
+        console.log("Auto-saved workspace:", currentWorkspaceId);
+      }
+    }
+  }, [currentWorkspaceId, excalidrawAPI, collabAPI]);
+
+  // Real-time polling for manual file edits
+  useEffect(() => {
+    let pollingInterval: number | null = null;
+    
+    if (currentWorkspaceId && excalidrawAPI && !collabAPI?.isCollaborating()) {
+      const pollForUpdates = async () => {
+        try {
+          const workspace = await WorkspaceManager.forceRefreshWorkspace(currentWorkspaceId);
+          if (!workspace) {
+            // Stop polling if workspace not found or server error/backoff
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+            }
+            console.warn('Stopped polling: workspace unavailable');
+            return;
+          }
+          if (workspace) {
+            // Prefer server version (mtime) when deciding updates to capture manual edits
+            const serverVersion = (workspace as any).version || 0;
+            const currentElements = excalidrawAPI.getSceneElements();
+            const currentTimestamp = Math.max(...currentElements.map(el => el.updated || 0), 0);
+            // If server has newer version or elements timestamps are newer, update scene
+            if (serverVersion > 0) {
+              // We don't track local version here; if serverVersion exists, trust it
+              console.log("🔄 Detected server update (version)");
+              excalidrawAPI.updateScene({
+                elements: autoResizeContainers(workspace.elements as any),
+                files: (workspace as any).files,
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+            } else {
+              const fileTimestamp = Math.max(...workspace.elements.map(el => el.updated || 0), 0);
+              if (fileTimestamp > currentTimestamp) {
+                console.log("🔄 Detected manual file changes, updating UI...");
+                excalidrawAPI.updateScene({
+                  elements: autoResizeContainers(workspace.elements as any),
+                  files: (workspace as any).files,
+                  captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error polling for workspace updates:", error);
+        }
+      };
+
+      // Poll every 2 seconds when a workspace is active
+      pollingInterval = window.setInterval(pollForUpdates, 2000);
+      console.log("🔄 Started real-time polling for workspace:", currentWorkspaceId);
+    }
+
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        console.log("🔄 Stopped real-time polling");
+      }
+    };
+  }, [currentWorkspaceId, excalidrawAPI, collabAPI]);
+
   const [latestShareableLink, setLatestShareableLink] = useState<string | null>(
     null,
   );
@@ -730,6 +843,26 @@ const ExcalidrawWrapper = () => {
   const handleWorkspaceChange = async (workspaceId: string | null) => {
     setCurrentWorkspaceId(workspaceId);
     WorkspaceManager.setCurrentWorkspaceId(workspaceId);
+    
+    // Set up auto-save callback
+    WorkspaceManager.setAutoSaveCallback(autoSaveCallback);
+
+    // Immediately load and render the selected workspace to avoid blank canvas
+    try {
+      if (workspaceId && excalidrawAPI) {
+        const ws = await WorkspaceManager.loadWorkspace(workspaceId);
+        if (ws) {
+          excalidrawAPI.updateScene({
+            elements: ws.elements,
+            appState: ws.appState as AppState,
+            files: ws.files,
+            captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load selected workspace:', err);
+    }
     
     // Save current workspace ID to localStorage for persistence
     try {
@@ -745,9 +878,15 @@ const ExcalidrawWrapper = () => {
     if (workspaceId && excalidrawAPI) {
       const workspace = await WorkspaceManager.loadWorkspace(workspaceId);
       if (workspace) {
+        // Ensure collaborators is properly formatted (should be a Map, not an object)
+        const appState = { ...workspace.appState } as AppState;
+        if (appState.collaborators && typeof appState.collaborators === 'object' && !(appState.collaborators instanceof Map)) {
+          appState.collaborators = new Map();
+        }
+        
         excalidrawAPI.updateScene({
           elements: workspace.elements,
-          appState: workspace.appState as AppState,
+          appState: appState,
           captureUpdate: CaptureUpdateAction.IMMEDIATELY,
         });
       }
@@ -966,7 +1105,11 @@ const ExcalidrawWrapper = () => {
             }
             // The onChange handler will automatically save to the workspace
           }}
-          hasUnsavedChanges={excalidrawAPI ? excalidrawAPI.getSceneElements().length > 0 : false}
+          hasUnsavedChanges={excalidrawAPI ? WorkspaceManager.hasUnsavedChanges(
+            excalidrawAPI.getSceneElements(),
+            excalidrawAPI.getAppState(),
+            excalidrawAPI.getFiles()
+          ) : false}
           onNewDrawing={() => {
             // Clear the canvas for a new drawing
             if (excalidrawAPI) {
