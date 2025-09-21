@@ -29,12 +29,21 @@ A fork of Excalidraw with enhanced workspace management features for organizing 
    yarn install
    ```
 
-2. **Start the development server**:
+2. **Install API server dependencies**:
    ```bash
-   yarn start
+   cd excalidraw-app/api
+   npm install
+   cd ../..
    ```
 
-3. **Open your browser** to `http://localhost:3000`
+3. **Start the application with workspace management**:
+   ```bash
+   node start-workspace-server.js
+   ```
+
+4. **Open your browser** to `http://localhost:3000`
+
+   The workspace API will run on `http://localhost:3001` automatically.
 
 ## 📁 How to Use Workspaces
 
@@ -58,10 +67,39 @@ A fork of Excalidraw with enhanced workspace management features for organizing 
 
 ## 💾 Data Persistence
 
-- **All workspaces and drawings are saved locally** in your browser
+- **All workspaces and drawings are saved as files** in the `workspaces/` directory
+- **Version control friendly** - drawings are stored as `.excalidraw` files that can be tracked in Git
 - **Data persists** when you close the browser or restart the server
-- **No server-side storage** - everything stays on your device
-- **Works offline** - no internet connection required
+- **Project-based storage** - drawings are part of your codebase
+- **Works offline** - no external dependencies required
+
+## 🔁 Manual File Edit Reflection (G.R.I.D)
+
+We added reliable live reflection of manual edits to `.excalidraw` files plus server hardening.
+
+### What’s included
+
+- Live polling of the active workspace. UI refreshes when file content changes
+- Atomic writes for workspace files and `workspace-metadata.json` (tmp + rename)
+- JSON self-healing (trim trailing garbage and persist recovered content)
+- Versioning/optimistic concurrency (server returns `version`, PUT sends it; 409 on stale writes)
+- AppState sanitization on server to prevent client crashes
+- File watcher updates metadata `updatedAt` from file mtime
+- Auto-resize heuristic: rectangles enclosing text expand to keep padding around edited text
+
+### How to test
+
+1. Run API: `cd excalidraw-app/api && node workspaces.js` (port 3001)
+2. Run UI: `yarn start` (port 3000)
+3. Create/select a workspace, then edit `workspaces/<id>.excalidraw`:
+   - For text elements, set `text` and `originalText` to the same string
+   - Optionally set `containerId` to the rectangle id to auto-expand the rectangle
+4. Save; within ~2s the canvas updates.
+
+API changes:
+
+- `GET /api/workspaces/:id` → `{ ..., version: <mtimeMs> }`
+- `PUT /api/workspaces/:id` accepts `{ elements, appState, files, version }`, returns `{ success, version }` or `409 { error: "Conflict", currentVersion }`
 
 ## 🛠️ Development
 

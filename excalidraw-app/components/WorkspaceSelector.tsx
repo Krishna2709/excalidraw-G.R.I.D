@@ -15,8 +15,8 @@ import {
 import { t } from "@excalidraw/excalidraw/i18n";
 
 // eslint-disable-next-line import/order
-import { WorkspaceManager } from "../data/WorkspaceManager";
-import type { WorkspaceMetadata } from "../data/WorkspaceManager";
+import { ProjectWorkspaceManager as WorkspaceManager } from "../data/ProjectWorkspaceManager";
+import type { WorkspaceMetadata } from "../data/ProjectWorkspaceManager";
 
 // eslint-disable-next-line import/order
 import "./WorkspaceSelector.scss";
@@ -53,24 +53,46 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
   const [editingWorkspace, setEditingWorkspace] =
     useState<WorkspaceMetadata | null>(null);
   const [editWorkspaceName, setEditWorkspaceName] = useState("");
+  const [showDrawingNameDialog, setShowDrawingNameDialog] = useState(false);
+  const [drawingName, setDrawingName] = useState("");
+  const [newDrawingName, setNewDrawingName] = useState("");
 
   const loadWorkspaces = useCallback(async () => {
-    const workspacesList = await WorkspaceManager.getAllWorkspaces();
-    setWorkspaces(workspacesList);
+    try {
+      console.log("Loading workspaces...");
+      const workspacesList = await WorkspaceManager.getAllWorkspaces();
+      console.log("Loaded workspaces:", workspacesList);
+      console.log("Workspaces count:", workspacesList.length);
+      setWorkspaces(workspacesList);
+    } catch (error) {
+      console.error("Error loading workspaces:", error);
+      setWorkspaces([]);
+    }
   }, []);
 
   useEffect(() => {
     loadWorkspaces();
-    // Always show welcome dialog on app start
-    setShowWelcomeDialog(true);
   }, [loadWorkspaces]);
+
+  // Show welcome dialog when app starts (but allow it to be controlled)
+  useEffect(() => {
+    // Show welcome dialog on initial load
+    setShowWelcomeDialog(true);
+  }, []);
 
   const handleCreateWorkspace = async () => {
     if (newWorkspaceName.trim()) {
       const workspace = await WorkspaceManager.createWorkspace(
         newWorkspaceName.trim(),
       );
+      
+      // Set drawing name if provided
+      if (newDrawingName.trim()) {
+        await WorkspaceManager.updateDrawingName(workspace.id, newDrawingName.trim());
+      }
+      
       setNewWorkspaceName("");
+      setNewDrawingName("");
       setShowCreateDialog(false);
       setShowWelcomeDialog(false);
       await loadWorkspaces();
@@ -110,6 +132,29 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
       setShowEditDialog(false);
       setEditingWorkspace(null);
       await loadWorkspaces();
+    }
+  };
+
+  const handleUpdateDrawingName = async () => {
+    if (drawingName.trim()) {
+      if (currentWorkspaceId) {
+        // Update existing workspace drawing name
+        await WorkspaceManager.updateDrawingName(
+          currentWorkspaceId,
+          drawingName.trim(),
+        );
+        setDrawingName("");
+        setShowDrawingNameDialog(false);
+        await loadWorkspaces();
+      } else {
+        // For quick draw, create a new workspace with the drawing name
+        const workspace = await WorkspaceManager.createWorkspace("Quick Drawing");
+        await WorkspaceManager.updateDrawingName(workspace.id, drawingName.trim());
+        setDrawingName("");
+        setShowDrawingNameDialog(false);
+        await loadWorkspaces();
+        onWorkspaceChange(workspace.id);
+      }
     }
   };
 
@@ -322,6 +367,18 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 <div className="workspace-selector__dropdown-actions">
                   <button
                     type="button"
+                    onClick={() => {
+                      setDrawingName(currentWorkspace?.drawingName || "");
+                      setShowDrawingNameDialog(true);
+                      setShowWorkspaceDropdown(false);
+                    }}
+                    className="workspace-selector__dropdown-option workspace-selector__dropdown-option--name"
+                  >
+                    ✏️
+                    <span>Name Drawing</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setShowWorkspaceDropdown(false)}
                     className="workspace-selector__dropdown-cancel"
                   >
@@ -344,9 +401,21 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
         </div>
       )}
 
-      {/* Quick Drawing Save Button (when no workspace selected) */}
+      {/* Quick Drawing Actions (when no workspace selected) */}
       {!currentWorkspaceId && hasUnsavedChanges && (
         <div className="workspace-save-prompt">
+          <button
+            type="button"
+            onClick={() => {
+              setDrawingName("");
+              setShowDrawingNameDialog(true);
+            }}
+            className="workspace-save-prompt__button workspace-save-prompt__button--name"
+            title="Name your drawing"
+          >
+            ✏️
+            <span>Name Drawing</span>
+          </button>
           <button
             type="button"
             onClick={() => setShowSaveDialog(true)}
@@ -685,6 +754,17 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                     <div className="workspace-item__actions">
                       <ToolButton
                         type="button"
+                        onClick={() => {
+                          setDrawingName(workspace.drawingName || "");
+                          setShowDrawingNameDialog(true);
+                          setShowWorkspaceList(false);
+                        }}
+                        className="workspace-item__name"
+                        aria-label="Name drawing"
+                        icon={<span>✏️</span>}
+                      />
+                      <ToolButton
+                        type="button"
                         onClick={() => openEditDialog(workspace)}
                         className="workspace-item__edit"
                         aria-label="Edit workspace"
@@ -727,19 +807,37 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
           className="workspace-create-dialog"
         >
           <div className="workspace-create-dialog__content">
-            <TextField
-              value={newWorkspaceName}
-              onChange={(value) => setNewWorkspaceName(value)}
-              placeholder={t("workspace.namePlaceholder")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleCreateWorkspace();
-                }
-              }}
-            />
+            <div className="workspace-create-dialog__field">
+              <label className="workspace-create-dialog__label">Workspace Name</label>
+              <TextField
+                value={newWorkspaceName}
+                onChange={(value) => setNewWorkspaceName(value)}
+                placeholder={t("workspace.namePlaceholder")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleCreateWorkspace();
+                  }
+                }}
+              />
+            </div>
+            <div className="workspace-create-dialog__field">
+              <label className="workspace-create-dialog__label">Drawing Name (Optional)</label>
+              <TextField
+                value={newDrawingName}
+                onChange={(value) => setNewDrawingName(value)}
+                placeholder="Enter drawing name (e.g., 'My Diagram', 'Project Plan')"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleCreateWorkspace();
+                  }
+                }}
+              />
+            </div>
             <div className="workspace-create-dialog__actions">
               <button type="button" onClick={() => {
                 setShowCreateDialog(false);
+                setNewWorkspaceName("");
+                setNewDrawingName("");
                 setShowWelcomeDialog(true);
               }}>
                 {t("buttons.cancel")}
@@ -859,6 +957,61 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 className="workspace-save-dialog__cancel-button"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Drawing Name Dialog */}
+      {showDrawingNameDialog && (
+        <Dialog
+          onCloseRequest={() => setShowDrawingNameDialog(false)}
+          title={currentWorkspaceId ? "Name Your Drawing" : "Save Your Drawing"}
+          className="workspace-drawing-name-dialog"
+        >
+          <div className="workspace-drawing-name-dialog__content">
+            <div className="workspace-drawing-name-dialog__header">
+              <h3>{currentWorkspaceId ? "Give your drawing a name" : "Save your drawing"}</h3>
+              <p>
+                {currentWorkspaceId 
+                  ? "This will help you identify your drawing within the workspace"
+                  : "This will create a new workspace and save your drawing with a name"
+                }
+              </p>
+            </div>
+
+            <div className="workspace-drawing-name-dialog__input">
+              <TextField
+                value={drawingName}
+                onChange={(value) => setDrawingName(value)}
+                placeholder="Enter drawing name (e.g., 'My Diagram', 'Project Plan')"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleUpdateDrawingName();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="workspace-drawing-name-dialog__actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDrawingNameDialog(false);
+                  setDrawingName("");
+                }}
+                className="workspace-drawing-name-dialog__cancel-button"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateDrawingName}
+                disabled={!drawingName.trim()}
+                className="workspace-drawing-name-dialog__save-button"
+              >
+                {currentWorkspaceId ? "Save Name" : "Save Drawing"}
               </button>
             </div>
           </div>
