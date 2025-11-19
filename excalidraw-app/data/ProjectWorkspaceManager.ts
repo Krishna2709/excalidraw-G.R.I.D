@@ -28,8 +28,6 @@ const API_BASE_URL = "http://localhost:3001/api";
 class ProjectWorkspaceStorage {
   private static async apiCall(endpoint: string, options: RequestInit = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log("ProjectWorkspaceManager.apiCall() - URL:", url);
-    console.log("ProjectWorkspaceManager.apiCall() - options:", options);
     
     const response = await fetch(url, {
       headers: {
@@ -44,17 +42,22 @@ class ProjectWorkspaceStorage {
       ...options,
     });
 
-    console.log("ProjectWorkspaceManager.apiCall() - response status:", response.status);
-    console.log("ProjectWorkspaceManager.apiCall() - response ok:", response.ok);
-
     if (!response.ok) {
+      // Return the response for 409 so caller can handle it
+      if (response.status === 409) {
+        const data = await response.json();
+        const error = new Error(`Conflict: ${response.statusText}`);
+        (error as any).status = 409;
+        (error as any).serverVersion = data.currentVersion;
+        throw error;
+      }
+      
       const errorText = await response.text();
       console.error("ProjectWorkspaceManager.apiCall() - error response:", errorText);
       throw new Error(`API call failed: ${response.statusText}`);
     }
 
     const result = await response.json();
-    console.log("ProjectWorkspaceManager.apiCall() - result:", result);
     return result;
   }
 
@@ -76,22 +79,7 @@ class ProjectWorkspaceStorage {
     };
   }
 
-  static async saveWorkspace(workspace: Workspace): Promise<void> {
-    console.log("ProjectWorkspaceManager.saveWorkspace() - Saving workspace:", workspace.id);
-    console.log("ProjectWorkspaceManager.saveWorkspace() - Elements count:", workspace.elements.length);
-
-    // Log text elements specifically
-    const textElements = workspace.elements.filter(el => el.type === 'text');
-    console.log("ProjectWorkspaceManager.saveWorkspace() - Text elements found:", textElements.length);
-    textElements.forEach((el, index) => {
-      console.log(`ProjectWorkspaceManager.saveWorkspace() - Text element ${index}:`, {
-        id: el.id,
-        text: (el as any).text,
-        originalText: (el as any).originalText,
-        type: el.type
-      });
-    });
-
+  static async saveWorkspace(workspace: Workspace): Promise<{ version: number }> {
     // sanitize appState to avoid passing non-serializable or incompatible fields
     const { appState, ...rest } = workspace as any;
     const sanitizedAppState = { ...(appState || {}) } as any;
@@ -117,9 +105,8 @@ class ProjectWorkspaceStorage {
         version: workspace.version,
       }),
     });
-    if ((result as any)?.version) {
-      workspace.version = (result as any).version;
-    }
+    
+    return result;
   }
 
   static async loadWorkspace(id: string): Promise<Workspace | null> {
@@ -137,10 +124,8 @@ class ProjectWorkspaceStorage {
   }
 
   static async getAllWorkspaces(): Promise<WorkspaceMetadata[]> {
-    console.log("ProjectWorkspaceManager.getAllWorkspaces() called");
     try {
       const result = await this.apiCall("/workspaces");
-      console.log("ProjectWorkspaceManager.getAllWorkspaces() result:", result);
       return result;
     } catch (error) {
       console.error("ProjectWorkspaceManager.getAllWorkspaces() error:", error);
@@ -176,6 +161,14 @@ export class ProjectWorkspaceManager {
   private static lastSavedAppState: AppState | null = null;
   private static lastSavedFiles: BinaryFiles = {};
   private static autoSaveCallback: (() => void) | null = null;
+  
+  // Queueing mechanism
+  private static isSaving = false;
+  private static pendingSave: {
+    elements: readonly ExcalidrawElement[];
+    appState: AppState;
+    files: BinaryFiles;
+  } | null = null;
 
   static async createWorkspace(name: string): Promise<Workspace> {
     const workspace = await ProjectWorkspaceStorage.createWorkspace(name);
@@ -188,6 +181,9 @@ export class ProjectWorkspaceManager {
     const workspace = await ProjectWorkspaceStorage.loadWorkspace(id);
     if (workspace) {
       this.currentWorkspaceId = id;
+      this.lastSavedElements = [...workspace.elements];
+      this.lastSavedAppState = { ...workspace.appState } as AppState;
+      this.lastSavedFiles = { ...workspace.files };
       this.startAutoSave();
     }
     return workspace;
@@ -202,19 +198,68 @@ export class ProjectWorkspaceManager {
       return;
     }
 
-    const workspace = await ProjectWorkspaceStorage.loadWorkspace(
-      this.currentWorkspaceId,
-    );
-    if (workspace) {
-      workspace.elements = [...elements];
-      workspace.appState = { ...appState };
-      workspace.files = { ...files };
-      await ProjectWorkspaceStorage.saveWorkspace(workspace);
-      
-      // Update last saved state
-      this.lastSavedElements = [...elements];
-      this.lastSavedAppState = { ...appState };
-      this.lastSavedFiles = { ...files };
+    // Update pending save with latest data
+    this.pendingSave = { elements, appState, files };
+
+    // If already saving, the loop will pick up the pending save
+    if (this.isSaving) {
+      return;
+    }
+
+    this.isSaving = true;
+    
+    try {
+      while (this.pendingSave) {
+        const dataToSave = this.pendingSave;
+        this.pendingSave = null; // Clear pending before starting, so new changes during save will re-trigger
+
+        const workspace = await ProjectWorkspaceStorage.loadWorkspace(this.currentWorkspaceId);
+        if (!workspace) {
+          console.error("Workspace not found during save");
+          break;
+        }
+
+        workspace.elements = [...dataToSave.elements];
+        workspace.appState = { ...dataToSave.appState };
+        workspace.files = { ...dataToSave.files };
+
+        try {
+          const result = await ProjectWorkspaceStorage.saveWorkspace(workspace);
+          if (result?.version) {
+            workspace.version = result.version;
+          }
+          
+          // Update last saved state on success
+          this.lastSavedElements = [...dataToSave.elements];
+          this.lastSavedAppState = { ...dataToSave.appState };
+          this.lastSavedFiles = { ...dataToSave.files };
+          
+          console.log(`Workspace ${this.currentWorkspaceId} saved successfully. Version: ${result.version}`);
+        } catch (error: any) {
+          if (error.status === 409) {
+            console.warn("Conflict detected during save. Retrying with updated version...");
+            // Update local version from server response and retry loop will pick it up if we set pendingSave back
+            // But actually, we should just let the next iteration handle it if there is one.
+            // If there is NO pending save, we should probably re-queue this one?
+            // Strategy: "Client Wins" - we want to overwrite.
+            // The loadWorkspace at start of loop fetched the latest version (if we didn't have it).
+            // But if we got 409, it means it changed BETWEEN load and save.
+            
+            // We can retry immediately with the server version
+            if (error.serverVersion) {
+               workspace.version = error.serverVersion;
+               // Re-queue the data to try again
+               if (!this.pendingSave) {
+                 this.pendingSave = dataToSave;
+               }
+            }
+          } else {
+            console.error("Error saving workspace:", error);
+          }
+        }
+      }
+    } finally {
+      this.isSaving = false;
     }
   }
 

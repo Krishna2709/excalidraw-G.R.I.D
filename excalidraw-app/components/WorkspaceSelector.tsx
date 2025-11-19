@@ -56,6 +56,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
   const [showDrawingNameDialog, setShowDrawingNameDialog] = useState(false);
   const [drawingName, setDrawingName] = useState("");
   const [newDrawingName, setNewDrawingName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadWorkspaces = useCallback(async () => {
     try {
@@ -82,78 +83,119 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
 
   const handleCreateWorkspace = async () => {
     if (newWorkspaceName.trim()) {
-      const workspace = await WorkspaceManager.createWorkspace(
-        newWorkspaceName.trim(),
-      );
-      
-      // Set drawing name if provided
-      if (newDrawingName.trim()) {
-        await WorkspaceManager.updateDrawingName(workspace.id, newDrawingName.trim());
+      setIsLoading(true);
+      try {
+        const workspace = await WorkspaceManager.createWorkspace(
+          newWorkspaceName.trim(),
+        );
+        
+        // Set drawing name if provided
+        if (newDrawingName.trim()) {
+          await WorkspaceManager.updateDrawingName(workspace.id, newDrawingName.trim());
+        }
+        
+        setNewWorkspaceName("");
+        setNewDrawingName("");
+        setShowCreateDialog(false);
+        setShowWelcomeDialog(false);
+        await loadWorkspaces();
+        onWorkspaceChange(workspace.id);
+      } catch (error) {
+        console.error("Failed to create workspace:", error);
+        alert("Failed to create workspace. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
-      
-      setNewWorkspaceName("");
-      setNewDrawingName("");
-      setShowCreateDialog(false);
-      setShowWelcomeDialog(false);
-      await loadWorkspaces();
-      onWorkspaceChange(workspace.id);
     }
   };
 
   const handleSelectWorkspace = async (workspaceId: string) => {
-    await WorkspaceManager.loadWorkspace(workspaceId);
-    onWorkspaceChange(workspaceId);
-    setShowWorkspaceList(false);
-    setShowWelcomeDialog(false);
+    setIsLoading(true);
+    try {
+      await WorkspaceManager.loadWorkspace(workspaceId);
+      onWorkspaceChange(workspaceId);
+      setShowWorkspaceList(false);
+      setShowWelcomeDialog(false);
+    } catch (error) {
+      console.error("Failed to load workspace:", error);
+      alert("Failed to load workspace. It may have been deleted.");
+      await loadWorkspaces(); // Refresh list
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDeleteWorkspace = async (workspaceId: string) => {
     if (confirm(t("workspace.deleteConfirm"))) {
-      await WorkspaceManager.deleteWorkspace(workspaceId);
-      await loadWorkspaces();
-      if (currentWorkspaceId === workspaceId) {
-        onWorkspaceChange(null);
-        setShowWelcomeDialog(true);
-      }
-      // Notify parent component about workspace deletion
-      if (onWorkspaceDeletion) {
-        onWorkspaceDeletion(workspaceId);
+      setIsLoading(true);
+      try {
+        await WorkspaceManager.deleteWorkspace(workspaceId);
+        await loadWorkspaces();
+        if (currentWorkspaceId === workspaceId) {
+          onWorkspaceChange(null);
+          setShowWelcomeDialog(true);
+        }
+        // Notify parent component about workspace deletion
+        if (onWorkspaceDeletion) {
+          onWorkspaceDeletion(workspaceId);
+        }
+      } catch (error) {
+        console.error("Failed to delete workspace:", error);
+        alert("Failed to delete workspace.");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
   const handleEditWorkspace = async () => {
     if (editingWorkspace && editWorkspaceName.trim()) {
-      await WorkspaceManager.updateWorkspaceName(
-        editingWorkspace.id,
-        editWorkspaceName.trim(),
-      );
-      setEditWorkspaceName("");
-      setShowEditDialog(false);
-      setEditingWorkspace(null);
-      await loadWorkspaces();
+      setIsLoading(true);
+      try {
+        await WorkspaceManager.updateWorkspaceName(
+          editingWorkspace.id,
+          editWorkspaceName.trim(),
+        );
+        setEditWorkspaceName("");
+        setShowEditDialog(false);
+        setEditingWorkspace(null);
+        await loadWorkspaces();
+      } catch (error) {
+        console.error("Failed to update workspace:", error);
+        alert("Failed to update workspace.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   const handleUpdateDrawingName = async () => {
     if (drawingName.trim()) {
-      if (currentWorkspaceId) {
-        // Update existing workspace drawing name
-        await WorkspaceManager.updateDrawingName(
-          currentWorkspaceId,
-          drawingName.trim(),
-        );
-        setDrawingName("");
-        setShowDrawingNameDialog(false);
-        await loadWorkspaces();
-      } else {
-        // For quick draw, create a new workspace with the drawing name
-        const workspace = await WorkspaceManager.createWorkspace("Quick Drawing");
-        await WorkspaceManager.updateDrawingName(workspace.id, drawingName.trim());
-        setDrawingName("");
-        setShowDrawingNameDialog(false);
-        await loadWorkspaces();
-        onWorkspaceChange(workspace.id);
+      setIsLoading(true);
+      try {
+        if (currentWorkspaceId) {
+          // Update existing workspace drawing name
+          await WorkspaceManager.updateDrawingName(
+            currentWorkspaceId,
+            drawingName.trim(),
+          );
+          setDrawingName("");
+          setShowDrawingNameDialog(false);
+          await loadWorkspaces();
+        } else {
+          // For quick draw, create a new workspace with the drawing name
+          const workspace = await WorkspaceManager.createWorkspace("Quick Drawing");
+          await WorkspaceManager.updateDrawingName(workspace.id, drawingName.trim());
+          setDrawingName("");
+          setShowDrawingNameDialog(false);
+          await loadWorkspaces();
+          onWorkspaceChange(workspace.id);
+        }
+      } catch (error) {
+        console.error("Failed to update drawing name:", error);
+        alert("Failed to update drawing name.");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -188,14 +230,22 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
 
   const handleSaveToNewWorkspace = async () => {
     if (newWorkspaceName.trim()) {
-      const workspace = await WorkspaceManager.createWorkspace(
-        newWorkspaceName.trim(),
-      );
-      setNewWorkspaceName("");
-      setShowSaveDialog(false);
-      await loadWorkspaces();
-      if (onSaveToWorkspace) {
-        onSaveToWorkspace(workspace.id);
+      setIsLoading(true);
+      try {
+        const workspace = await WorkspaceManager.createWorkspace(
+          newWorkspaceName.trim(),
+        );
+        setNewWorkspaceName("");
+        setShowSaveDialog(false);
+        await loadWorkspaces();
+        if (onSaveToWorkspace) {
+          onSaveToWorkspace(workspace.id);
+        }
+      } catch (error) {
+        console.error("Failed to create workspace:", error);
+        alert("Failed to create workspace.");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -213,29 +263,45 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
 
   const handleNewDrawingInNewWorkspace = async () => {
     if (newWorkspaceName.trim()) {
-      const workspace = await WorkspaceManager.createWorkspace(
-        newWorkspaceName.trim(),
-      );
-      setNewWorkspaceName("");
-      setShowNewDrawingDialog(false);
-      await loadWorkspaces();
-      onWorkspaceChange(workspace.id);
-      if (onNewDrawing) {
-        onNewDrawing();
+      setIsLoading(true);
+      try {
+        const workspace = await WorkspaceManager.createWorkspace(
+          newWorkspaceName.trim(),
+        );
+        setNewWorkspaceName("");
+        setShowNewDrawingDialog(false);
+        await loadWorkspaces();
+        onWorkspaceChange(workspace.id);
+        if (onNewDrawing) {
+          onNewDrawing();
+        }
+      } catch (error) {
+        console.error("Failed to create workspace:", error);
+        alert("Failed to create workspace.");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
   const handleMoveToNewWorkspace = async () => {
     if (newWorkspaceName.trim()) {
-      const workspace = await WorkspaceManager.createWorkspace(
-        newWorkspaceName.trim(),
-      );
-      setNewWorkspaceName("");
-      setShowNewDrawingDialog(false);
-      await loadWorkspaces();
-      if (onSaveToWorkspace) {
-        onSaveToWorkspace(workspace.id);
+      setIsLoading(true);
+      try {
+        const workspace = await WorkspaceManager.createWorkspace(
+          newWorkspaceName.trim(),
+        );
+        setNewWorkspaceName("");
+        setShowNewDrawingDialog(false);
+        await loadWorkspaces();
+        if (onSaveToWorkspace) {
+          onSaveToWorkspace(workspace.id);
+        }
+      } catch (error) {
+        console.error("Failed to create workspace:", error);
+        alert("Failed to create workspace.");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -249,14 +315,22 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
 
   const handleMoveToNewWorkspaceFromDialog = async () => {
     if (newWorkspaceName.trim()) {
-      const workspace = await WorkspaceManager.createWorkspace(
-        newWorkspaceName.trim(),
-      );
-      setNewWorkspaceName("");
-      setShowMoveDialog(false);
-      await loadWorkspaces();
-      if (onSaveToWorkspace) {
-        onSaveToWorkspace(workspace.id);
+      setIsLoading(true);
+      try {
+        const workspace = await WorkspaceManager.createWorkspace(
+          newWorkspaceName.trim(),
+        );
+        setNewWorkspaceName("");
+        setShowMoveDialog(false);
+        await loadWorkspaces();
+        if (onSaveToWorkspace) {
+          onSaveToWorkspace(workspace.id);
+        }
+      } catch (error) {
+        console.error("Failed to create workspace:", error);
+        alert("Failed to create workspace.");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -278,6 +352,12 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
 
   return (
     <>
+      {isLoading && (
+        <div className="workspace-loading-overlay">
+          <div className="workspace-loading-spinner"></div>
+        </div>
+      )}
+      
       {/* Current Workspace Display */}
       {currentWorkspace && (
         <div className="workspace-selector">
@@ -288,6 +368,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
               className="workspace-selector__button"
               aria-label={currentWorkspace.name}
               title="Click to switch workspace or move drawing"
+              disabled={isLoading}
             >
               {LibraryIcon}
               <span>{currentWorkspace.name}</span>
@@ -315,6 +396,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                           setShowWorkspaceDropdown(false);
                         }}
                         className="workspace-selector__dropdown-option"
+                        disabled={isLoading}
                       >
                         {LibraryIcon}
                         <span>{workspace.name}</span>
@@ -340,6 +422,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                             setShowWorkspaceDropdown(false);
                           }}
                           className="workspace-selector__dropdown-option workspace-selector__dropdown-option--move"
+                          disabled={isLoading}
                         >
                           {LoadIcon}
                           <span>Move to {workspace.name}</span>
@@ -357,6 +440,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                         setShowWorkspaceDropdown(false);
                       }}
                       className="workspace-selector__dropdown-option workspace-selector__dropdown-option--move"
+                      disabled={isLoading}
                     >
                       {PlusIcon}
                       <span>Move to New Workspace</span>
@@ -373,6 +457,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                       setShowWorkspaceDropdown(false);
                     }}
                     className="workspace-selector__dropdown-option workspace-selector__dropdown-option--name"
+                    disabled={isLoading}
                   >
                     ✏️
                     <span>Name Drawing</span>
@@ -394,6 +479,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
             onClick={handleNewDrawing}
             className="workspace-selector__new-drawing-button"
             title="Create new drawing"
+            disabled={isLoading}
           >
             {PlusIcon}
             <span>New Drawing</span>
@@ -412,6 +498,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
             }}
             className="workspace-save-prompt__button workspace-save-prompt__button--name"
             title="Name your drawing"
+            disabled={isLoading}
           >
             ✏️
             <span>Name Drawing</span>
@@ -421,6 +508,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
             onClick={() => setShowSaveDialog(true)}
             className="workspace-save-prompt__button"
             title="Save your drawing to a workspace"
+            disabled={isLoading}
           >
             💾
             <span>Save to Workspace</span>
@@ -450,6 +538,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 type="button"
                 onClick={handleQuickDrawingStart}
                 className="workspace-welcome-dialog__option workspace-welcome-dialog__option--quick"
+                disabled={isLoading}
               >
                 {LoadIcon}
                 <div className="workspace-welcome-dialog__option-content">
@@ -464,6 +553,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 type="button"
                 onClick={handleCreateNewWorkspace}
                 className="workspace-welcome-dialog__option workspace-welcome-dialog__option--new"
+                disabled={isLoading}
               >
                 {PlusIcon}
                 <div className="workspace-welcome-dialog__option-content">
@@ -477,6 +567,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                   type="button"
                   onClick={() => handleSelectWorkspace(currentWorkspaceId)}
                   className="workspace-welcome-dialog__option workspace-welcome-dialog__option--current"
+                  disabled={isLoading}
                 >
                   {LibraryIcon}
                   <div className="workspace-welcome-dialog__option-content">
@@ -494,7 +585,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 className={`workspace-welcome-dialog__option workspace-welcome-dialog__option--existing ${
                   workspaces.length === 0 ? "workspace-welcome-dialog__option--disabled" : ""
                 }`}
-                disabled={workspaces.length === 0}
+                disabled={workspaces.length === 0 || isLoading}
               >
                 {LibraryIcon}
                 <div className="workspace-welcome-dialog__option-content">
@@ -535,6 +626,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                         type="button"
                         onClick={() => handleMoveToWorkspace(workspace.id)}
                         className="workspace-move-dialog__option"
+                        disabled={isLoading}
                       >
                         {LibraryIcon}
                         <div className="workspace-move-dialog__option-content">
@@ -563,7 +655,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                   <button
                     type="button"
                     onClick={handleMoveToNewWorkspaceFromDialog}
-                    disabled={!newWorkspaceName.trim()}
+                    disabled={!newWorkspaceName.trim() || isLoading}
                     className="workspace-move-dialog__create-button"
                   >
                     Create & Move
@@ -617,6 +709,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                         setShowSaveDialog(true);
                       }}
                       className="workspace-new-drawing-dialog__option"
+                      disabled={isLoading}
                     >
                       {LibraryIcon}
                       <div className="workspace-new-drawing-dialog__option-content">
@@ -629,6 +722,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                       type="button"
                       onClick={handleMoveToNewWorkspace}
                       className="workspace-new-drawing-dialog__option"
+                      disabled={isLoading}
                     >
                       {PlusIcon}
                       <div className="workspace-new-drawing-dialog__option-content">
@@ -647,6 +741,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                     type="button"
                     onClick={handleNewDrawingInCurrentWorkspace}
                     className="workspace-new-drawing-dialog__option"
+                    disabled={isLoading}
                   >
                     {LoadIcon}
                     <div className="workspace-new-drawing-dialog__option-content">
@@ -671,7 +766,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                     <button
                       type="button"
                       onClick={handleNewDrawingInNewWorkspace}
-                      disabled={!newWorkspaceName.trim()}
+                      disabled={!newWorkspaceName.trim() || isLoading}
                       className="workspace-new-drawing-dialog__option workspace-new-drawing-dialog__option--create"
                     >
                       {PlusIcon}
@@ -720,6 +815,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 type="button"
                 onClick={handleCreateNewWorkspace}
                 className="workspace-list-dialog__create-button"
+                disabled={isLoading}
               >
                 {PlusIcon}
                 {t("workspace.create")}
@@ -762,6 +858,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                         className="workspace-item__name"
                         aria-label="Name drawing"
                         icon={<span>✏️</span>}
+                        disabled={isLoading}
                       />
                       <ToolButton
                         type="button"
@@ -769,6 +866,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                         className="workspace-item__edit"
                         aria-label="Edit workspace"
                         icon={DotsIcon}
+                        disabled={isLoading}
                       />
                       <ToolButton
                         type="button"
@@ -776,6 +874,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                         className="workspace-item__delete"
                         aria-label="Delete workspace"
                         icon={TrashIcon}
+                        disabled={isLoading}
                       />
                     </div>
                   </div>
@@ -845,7 +944,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
               <button
                 type="button"
                 onClick={handleCreateWorkspace}
-                disabled={!newWorkspaceName.trim()}
+                disabled={!newWorkspaceName.trim() || isLoading}
               >
                 {t("workspace.create")}
               </button>
@@ -883,7 +982,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
               <button
                 type="button"
                 onClick={handleEditWorkspace}
-                disabled={!editWorkspaceName.trim()}
+                disabled={!editWorkspaceName.trim() || isLoading}
               >
                 {t("buttons.save")}
               </button>
@@ -914,6 +1013,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                       type="button"
                       onClick={() => handleSaveToWorkspace(workspace.id)}
                       className="workspace-save-dialog__option"
+                      disabled={isLoading}
                     >
                       {LibraryIcon}
                       <span>{workspace.name}</span>
@@ -939,7 +1039,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
                 <button
                   type="button"
                   onClick={handleSaveToNewWorkspace}
-                  disabled={!newWorkspaceName.trim()}
+                  disabled={!newWorkspaceName.trim() || isLoading}
                   className="workspace-save-dialog__create-button"
                 >
                   Create & Save
@@ -1008,7 +1108,7 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({
               <button
                 type="button"
                 onClick={handleUpdateDrawingName}
-                disabled={!drawingName.trim()}
+                disabled={!drawingName.trim() || isLoading}
                 className="workspace-drawing-name-dialog__save-button"
               >
                 {currentWorkspaceId ? "Save Name" : "Save Drawing"}

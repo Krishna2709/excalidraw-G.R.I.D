@@ -1,0 +1,6 @@
+Here is the full transcript of a technical/regulatory video. Please generate a Mermaid flowchart exactly as described in your system instructions.
+
+TRANSCRIPT:
+"""
+[PASTE ENTIRE TRANSCRIPT HERE]
+"""
